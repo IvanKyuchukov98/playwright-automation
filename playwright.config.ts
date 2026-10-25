@@ -16,7 +16,12 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   workers: process.env.CI ? 4 : undefined,
   timeout: 30_000,
-  expect: { timeout: env.expectTimeout },
+  expect: {
+    timeout: env.expectTimeout,
+    toHaveScreenshot: { animations: 'disabled', caret: 'hide', maxDiffPixelRatio: 0.01 },
+  },
+  // Baselines are Linux-only (see tests/ui/visual.spec.ts), so the OS isn't part of the name.
+  snapshotPathTemplate: '{testDir}/__screenshots__/{testFilePath}/{arg}-{projectName}{ext}',
 
   // CI runs the suite in shards; each shard writes a blob report and a later job merges them
   // into one HTML report.

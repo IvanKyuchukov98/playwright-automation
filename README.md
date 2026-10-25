@@ -10,7 +10,7 @@ UI and API test automation framework in **TypeScript** with **Playwright Test**,
 | Language     | TypeScript (strict mode)                         |
 | Test runner  | Playwright Test                                  |
 | Browsers     | Chromium, Firefox, WebKit                        |
-| API testing  | Playwright `APIRequestContext`                   |
+| API testing  | Playwright `APIRequestContext`, zod schemas      |
 | Code quality | ESLint (typescript-eslint, playwright), Prettier |
 | Config       | Environment variables / `.env` (dotenv)          |
 
@@ -21,10 +21,10 @@ src/
   config/env.ts       settings with defaults, overridable via environment variables
   pages/              page objects (locators + user actions)
   components/         parts shared across pages, e.g. the header
-  api/                API clients and response models
+  api/                API clients and zod response schemas (types are derived from them)
   mocks/              network mocking helper and test data builders
   auth/               saved login sessions (storageState) for the UI tests
-  fixtures/index.ts   custom `test` that injects page objects and API clients
+  fixtures/           custom `test` that injects page objects and API clients, custom matchers
 tests/
   ui/                 browser tests, run once per browser project
   api/                API tests, no browser
@@ -60,6 +60,7 @@ npm test
 | `npm run test:api`    | API tests only                             |
 | `npm run test:smoke`  | tests tagged `@smoke`                      |
 | `npm run test:mock`   | UI tests with mocked API responses         |
+| `npm run test:visual` | visual comparison tests (Linux / CI only)  |
 | `npm run test:headed` | UI tests in a visible Chromium window      |
 | `npm run report`      | opens the last HTML report                 |
 
@@ -80,6 +81,26 @@ The browser projects depend on `setup`, so it runs automatically, also in every 
 token expires after a few minutes, so it's fetched fresh on each run. Tests for the login form
 itself don't use the saved session.
 
+## API contract checks (zod)
+
+Every API response is checked against a zod schema in `src/api/schemas.ts` with a custom matcher:
+
+```ts
+await expect(response).toMatchSchema(ProductPageSchema);
+```
+
+The TypeScript types (`Product`, `ProductPage`, ...) are inferred from the same schemas, so the
+types and the checks can't drift apart. The mock builders validate their output too, so mocked
+data always looks like real API data. A broken contract lists every problem with its location:
+
+```
+Expected https://api.../products/search?q=pliers to match the schema:
+✖ Too small: expected number to be >=0
+  → at data[0].price
+✖ Invalid input: expected object, received undefined
+  → at data[1].brand
+```
+
 ## Network mocking
 
 `tests/ui/products.mock.spec.ts` intercepts the calls the browser makes to the Toolshop API to
@@ -99,6 +120,18 @@ check UI states a shared backend can't easily produce. The `mockApi` fixture
 The server error test documents a known issue: on a 500 the product grid shows loading
 placeholders forever, with no error message. It's marked `test.fail()`, so it passes while the
 bug exists and Playwright flags it once the app is fixed.
+
+## Visual comparison
+
+`tests/ui/visual.spec.ts` compares the login form, the guest header and the product grid with
+baseline screenshots, one per browser, in `tests/ui/__screenshots__/`. The product grid uses
+mocked products, so catalogue changes don't affect it.
+
+Screenshots differ between operating systems, so baselines are made on Linux in CI and the tests
+are skipped on other systems. To create or update the baselines, run the **Update visual
+baselines** workflow (Actions tab): it takes new screenshots against the Docker Toolshop and
+commits the changed images. When a comparison fails, the HTML report shows the expected, actual
+and diff images side by side.
 
 ## Configuration
 

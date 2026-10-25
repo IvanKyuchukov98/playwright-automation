@@ -1,5 +1,6 @@
 import { test as base } from '@playwright/test';
 import { AuthApi } from '../api/AuthApi';
+import { ProductsApi } from '../api/ProductsApi';
 import { Header } from '../components/Header';
 import { ToolshopApiMock } from '../mocks/ToolshopApiMock';
 import { AccountPage } from '../pages/AccountPage';
@@ -18,6 +19,7 @@ type Fixtures = {
   productDetailsPage: ProductDetailsPage;
   header: Header;
   authApi: AuthApi;
+  productsApi: ProductsApi;
   mockApi: ToolshopApiMock;
 };
 
@@ -28,7 +30,8 @@ export const test = base.extend<Fixtures>({
   productDetailsPage: async ({ page }, use) => use(new ProductDetailsPage(page)),
   header: async ({ page }, use) => use(new Header(page)),
   authApi: async ({ request }, use) => use(new AuthApi(request)),
+  productsApi: async ({ request }, use) => use(new ProductsApi(request)),
   mockApi: async ({ page }, use) => use(new ToolshopApiMock(page)),
 });
 
-export { expect } from '@playwright/test';
+export { expect } from './matchers';

@@ -1,6 +1,6 @@
 import type { APIRequestContext, APIResponse } from '@playwright/test';
 import { env } from '../config/env';
-import type { LoginResponse } from './models';
+import type { LoginResponse } from './schemas';
 
 export class AuthApi {
   constructor(private readonly request: APIRequestContext) {}

@@ -1,5 +1,5 @@
 import type { Page, Request, Route } from '@playwright/test';
-import type { Product, ProductPage } from '../api/models';
+import type { Product, ProductPage } from '../api/schemas';
 import { env } from '../config/env';
 import { aProductPage } from './builders';
 

@@ -5,6 +5,7 @@ export class ProductListPage {
   readonly searchInput: Locator;
   readonly searchButton: Locator;
   readonly sortSelect: Locator;
+  readonly productGrid: Locator;
   readonly productCards: Locator;
   readonly productNames: Locator;
   readonly productPrices: Locator;
@@ -16,6 +17,7 @@ export class ProductListPage {
     this.searchInput = page.getByTestId('search-query');
     this.searchButton = page.getByTestId('search-submit');
     this.sortSelect = page.getByTestId('sort');
+    this.productGrid = page.locator('app-overview .col-md-9 > .container');
     this.productCards = page.locator('a.card');
     this.productNames = page.getByTestId('product-name');
     this.productPrices = page.getByTestId('product-price');

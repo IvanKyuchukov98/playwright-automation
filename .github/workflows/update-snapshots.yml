@@ -1,0 +1,68 @@
+name: Update visual baselines
+
+# Takes new baseline screenshots for the @visual tests on Linux, the same environment the Tests
+# workflow compares against, and commits the changed images to the branch it runs on.
+# Run it after an intended UI change, or once to create the first baselines.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write # commit the new baseline images
+
+concurrency:
+  group: update-snapshots-${{ github.ref }}
+
+jobs:
+  update:
+    name: Update baselines
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Install browsers
+        run: npx playwright install --with-deps chromium firefox webkit
+
+      - name: Start the Toolshop
+        id: toolshop
+        uses: IvanKyuchukov98/toolshop-environment@v1
+
+      - name: Take new baseline screenshots
+        env:
+          UI_BASE_URL: ${{ steps.toolshop.outputs.ui-url }}
+          API_BASE_URL: ${{ steps.toolshop.outputs.api-url }}
+        run: |
+          npx playwright test --grep @visual --update-snapshots=changed --reporter=list \
+            --project=chromium --project=firefox --project=webkit
+
+      - name: Upload baselines for review
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-baselines
+          path: tests/ui/__screenshots__
+          retention-days: 7
+
+      - name: Commit changed baselines
+        env:
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          git add tests/ui/__screenshots__
+          if git diff --cached --quiet; then
+            echo "Baselines are up to date." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          {
+            echo "### Updated baselines"
+            git diff --cached --name-status | sed 's/^/- /'
+          } >> "$GITHUB_STEP_SUMMARY"
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -m "Update visual baselines"
+          git push origin "HEAD:$BRANCH"

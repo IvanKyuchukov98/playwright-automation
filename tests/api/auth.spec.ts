@@ -1,4 +1,4 @@
-import type { ErrorResponse, LoginResponse } from '../../src/api/models';
+import { ErrorResponseSchema, LoginResponseSchema } from '../../src/api/schemas';
 import { env } from '../../src/config/env';
 import { expect, test } from '../../src/fixtures';
 
@@ -10,10 +10,8 @@ test.describe('Authentication API', { tag: '@api' }, () => {
       const response = await authApi.login(env.customer.email, env.customer.password);
 
       expect(response.status()).toBe(200);
-      const body = (await response.json()) as LoginResponse;
-      expect(body.access_token).toBeTruthy();
-      expect(body.token_type.toLowerCase()).toBe('bearer');
-      expect(body.expires_in).toBeGreaterThan(0);
+      // The schema checks a non-empty token, a "bearer" type and a positive expiry.
+      await expect(response).toMatchSchema(LoginResponseSchema);
     },
   );
 
@@ -22,7 +20,7 @@ test.describe('Authentication API', { tag: '@api' }, () => {
     const response = await authApi.login('unknown.user@example.com', 'wrong-password');
 
     expect(response.status()).toBe(401);
-    const body = (await response.json()) as ErrorResponse;
-    expect(body.error).toBe('Unauthorized');
+    await expect(response).toMatchSchema(ErrorResponseSchema);
+    expect((await response.json()).error).toBe('Unauthorized');
   });
 });
