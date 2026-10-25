@@ -22,6 +22,7 @@ src/
   pages/              page objects (locators + user actions)
   components/         parts shared across pages, e.g. the header
   api/                API clients and response models
+  mocks/              network mocking helper and test data builders
   auth/               saved login sessions (storageState) for the UI tests
   fixtures/index.ts   custom `test` that injects page objects and API clients
 tests/
@@ -58,6 +59,7 @@ npm test
 | `npm run test:ui`     | UI tests on Chromium, Firefox and WebKit   |
 | `npm run test:api`    | API tests only                             |
 | `npm run test:smoke`  | tests tagged `@smoke`                      |
+| `npm run test:mock`   | UI tests with mocked API responses         |
 | `npm run test:headed` | UI tests in a visible Chromium window      |
 | `npm run report`      | opens the last HTML report                 |
 
@@ -77,6 +79,26 @@ test.use({ storageState: storageState.customer });
 The browser projects depend on `setup`, so it runs automatically, also in every CI shard. The
 token expires after a few minutes, so it's fetched fresh on each run. Tests for the login form
 itself don't use the saved session.
+
+## Network mocking
+
+`tests/ui/products.mock.spec.ts` intercepts the calls the browser makes to the Toolshop API to
+check UI states a shared backend can't easily produce. The `mockApi` fixture
+(`src/mocks/ToolshopApiMock.ts`) wraps `page.route()`:
+
+| Technique               | Example                                                          |
+| ----------------------- | ---------------------------------------------------------------- |
+| Replace a response      | `mockApi.searchResults([])`: empty search results                |
+| Fully fake data         | `mockApi.productList([aProduct({ price: 1234.5 })])`             |
+| Change a real response  | `mockApi.modifyProductDetails((p) => { p.in_stock = false; })`   |
+| Simulate a server error | `mockApi.failProductList(500)`                                   |
+| Check what the UI sends | `mockApi.nextProductListRequest()` then inspect `postDataJSON()` |
+
+`aProduct()` builds a valid product, so a test sets only the fields it cares about.
+
+The server error test documents a known issue: on a 500 the product grid shows loading
+placeholders forever, with no error message. It's marked `test.fail()`, so it passes while the
+bug exists and Playwright flags it once the app is fixed.
 
 ## Configuration
 

@@ -1,8 +1,11 @@
 import { test as base } from '@playwright/test';
 import { AuthApi } from '../api/AuthApi';
 import { Header } from '../components/Header';
+import { ToolshopApiMock } from '../mocks/ToolshopApiMock';
 import { AccountPage } from '../pages/AccountPage';
 import { LoginPage } from '../pages/LoginPage';
+import { ProductDetailsPage } from '../pages/ProductDetailsPage';
+import { ProductListPage } from '../pages/ProductListPage';
 
 /**
  * Page objects and API clients as fixtures: a test asks for what it needs by name
@@ -11,15 +14,21 @@ import { LoginPage } from '../pages/LoginPage';
 type Fixtures = {
   loginPage: LoginPage;
   accountPage: AccountPage;
+  productListPage: ProductListPage;
+  productDetailsPage: ProductDetailsPage;
   header: Header;
   authApi: AuthApi;
+  mockApi: ToolshopApiMock;
 };
 
 export const test = base.extend<Fixtures>({
   loginPage: async ({ page }, use) => use(new LoginPage(page)),
   accountPage: async ({ page }, use) => use(new AccountPage(page)),
+  productListPage: async ({ page }, use) => use(new ProductListPage(page)),
+  productDetailsPage: async ({ page }, use) => use(new ProductDetailsPage(page)),
   header: async ({ page }, use) => use(new Header(page)),
   authApi: async ({ request }, use) => use(new AuthApi(request)),
+  mockApi: async ({ page }, use) => use(new ToolshopApiMock(page)),
 });
 
 export { expect } from '@playwright/test';
