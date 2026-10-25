@@ -5,3 +5,4 @@ package-lock.json
 all-blob-reports/
 results.json
 blob-report/
+.auth/

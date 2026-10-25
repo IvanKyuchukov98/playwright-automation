@@ -4,7 +4,8 @@ import { env } from './src/config/env';
 /**
  * Projects:
  *  - api                        API tests, no browser
- *  - chromium / firefox / webkit UI tests, one project per browser engine
+ *  - setup                      logs in through the API and saves the session (storageState)
+ *  - chromium / firefox / webkit UI tests, one project per browser engine; they run after setup
  *
  * Pick one with --project, e.g. `npx playwright test --project=firefox`.
  */
@@ -38,18 +39,26 @@ export default defineConfig({
       use: { baseURL: env.apiBaseUrl },
     },
     {
+      name: 'setup',
+      testDir: './tests/setup',
+      testMatch: /.*\.setup\.ts/,
+    },
+    {
       name: 'chromium',
       testDir: './tests/ui',
+      dependencies: ['setup'],
       use: { ...devices['Desktop Chrome'], viewport: { width: 1920, height: 1080 } },
     },
     {
       name: 'firefox',
       testDir: './tests/ui',
+      dependencies: ['setup'],
       use: { ...devices['Desktop Firefox'], viewport: { width: 1920, height: 1080 } },
     },
     {
       name: 'webkit',
       testDir: './tests/ui',
+      dependencies: ['setup'],
       use: { ...devices['Desktop Safari'], viewport: { width: 1920, height: 1080 } },
     },
   ],

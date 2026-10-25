@@ -22,10 +22,12 @@ src/
   pages/              page objects (locators + user actions)
   components/         parts shared across pages, e.g. the header
   api/                API clients and response models
+  auth/               saved login sessions (storageState) for the UI tests
   fixtures/index.ts   custom `test` that injects page objects and API clients
 tests/
   ui/                 browser tests, run once per browser project
   api/                API tests, no browser
+  setup/              logs in through the API before the UI tests run
 playwright.config.ts  projects, reporters, traces, timeouts
 ```
 
@@ -60,6 +62,21 @@ npm test
 | `npm run report`      | opens the last HTML report                 |
 
 Single browser: `npx playwright test --project=firefox`. Filter by tag: `npx playwright test --grep @api`.
+
+## Logged-in tests (API login + storageState)
+
+UI tests that need a logged-in customer don't go through the login form. Before the browser
+projects start, the `setup` project (`tests/setup/auth.setup.ts`) logs in through the API and
+saves the token as a browser session in `.auth/customer.json`. The Toolshop keeps the token in
+localStorage, so no browser is needed for this step. A test file opts in with:
+
+```ts
+test.use({ storageState: storageState.customer });
+```
+
+The browser projects depend on `setup`, so it runs automatically, also in every CI shard. The
+token expires after a few minutes, so it's fetched fresh on each run. Tests for the login form
+itself don't use the saved session.
 
 ## Configuration
 
