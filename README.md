@@ -102,6 +102,9 @@ Defaults live in `src/config/env.ts`. Override them with environment variables o
   uploads a blob report, and a final job merges them with `playwright merge-reports` into a single
   HTML report, uploaded as the `playwright-report` artifact.
 - **Summary:** passed / failed / flaky / skipped per project, shown on the run page.
+- **Report history:** runs on `main` publish to GitHub Pages: the merged HTML report of the
+  last 10 runs, with traces you can open in the browser, and an index page with results per
+  project, duration and links to each run and commit.
 - **Checks:** type check, ESLint and Prettier run in a separate job.
 
 ## Code quality

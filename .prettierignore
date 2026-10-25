@@ -6,3 +6,4 @@ all-blob-reports/
 results.json
 blob-report/
 .auth/
+site/
