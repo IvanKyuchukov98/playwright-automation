@@ -1,0 +1,154 @@
+name: Tests
+
+on:
+  schedule:
+    - cron: '37 3 * * *' # nightly full regression; an off-peak minute starts closer to on time
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: Test suite
+        type: choice
+        options: [regression, smoke]
+        default: regression
+      browsers:
+        description: Browsers
+        type: choice
+        options: [all, chromium, firefox, webkit]
+        default: all
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Type check, lint, format
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run format:check
+
+  plan:
+    name: Plan run
+    runs-on: ubuntu-24.04
+    outputs:
+      suite: ${{ steps.plan.outputs.suite }}
+      browsers: ${{ steps.plan.outputs.browsers }}
+    steps:
+      - id: plan
+        env:
+          EVENT: ${{ github.event_name }}
+          INPUT_SUITE: ${{ inputs.suite }}
+          INPUT_BROWSERS: ${{ inputs.browsers }}
+        run: |
+          # Nightly runs cover every browser; manual runs use the chosen inputs.
+          case "$EVENT" in
+            schedule) suite=regression; browsers=all ;;
+            *)        suite="$INPUT_SUITE"; browsers="$INPUT_BROWSERS" ;;
+          esac
+          if [ "$browsers" = all ]; then browsers="chromium firefox webkit"; fi
+          echo "suite=$suite" >> "$GITHUB_OUTPUT"
+          echo "browsers=$browsers" >> "$GITHUB_OUTPUT"
+          echo "Running **$suite** on $browsers, plus the API tests" >> "$GITHUB_STEP_SUMMARY"
+
+  test:
+    name: Shard ${{ matrix.shard }}/${{ strategy.job-total }}
+    needs: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        # Playwright splits the selected tests evenly across shards. Add numbers to scale out.
+        shard: [1, 2]
+    env:
+      SUITE: ${{ needs.plan.outputs.suite }}
+      BROWSERS: ${{ needs.plan.outputs.browsers }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Install browsers
+        run: npx playwright install --with-deps $BROWSERS
+
+      # The public site blocks CI browsers with a Cloudflare check, so test a local copy instead.
+      - name: Start the Toolshop
+        id: toolshop
+        uses: IvanKyuchukov98/toolshop-environment@v1
+
+      - name: Run tests
+        env:
+          UI_BASE_URL: ${{ steps.toolshop.outputs.ui-url }}
+          API_BASE_URL: ${{ steps.toolshop.outputs.api-url }}
+          SHARD: ${{ matrix.shard }}/${{ strategy.job-total }}
+        run: |
+          args=(--project=api --shard="$SHARD")
+          for browser in $BROWSERS; do args+=(--project="$browser"); done
+          if [ "$SUITE" = smoke ]; then args+=(--grep=@smoke); fi
+          npx playwright test "${args[@]}"
+
+      - name: Upload blob report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: blob-report-${{ matrix.shard }}
+          path: blob-report
+          if-no-files-found: ignore
+          retention-days: 1 # only needed until the merge job has run
+
+  report:
+    name: Merge reports
+    needs: [plan, test]
+    if: ${{ !cancelled() && needs.test.result != 'skipped' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      SUITE: ${{ needs.plan.outputs.suite }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Download blob reports
+        uses: actions/download-artifact@v8
+        with:
+          pattern: blob-report-*
+          merge-multiple: true
+          path: all-blob-reports
+
+      - name: Merge into one HTML report
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: results.json
+        run: npx playwright merge-reports --reporter html,json all-blob-reports
+
+      - name: Test summary
+        run: node .github/scripts/summary.mjs results.json >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload HTML report
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: playwright-report
+          retention-days: 30

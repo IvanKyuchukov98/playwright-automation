@@ -6,3 +6,5 @@ blob-report/
 .idea/
 .vscode/
 .DS_Store
+all-blob-reports/
+results.json

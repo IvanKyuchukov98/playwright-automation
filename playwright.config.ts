@@ -17,7 +17,9 @@ export default defineConfig({
   timeout: 30_000,
   expect: { timeout: env.expectTimeout },
 
-  reporter: [['list'], ['html', { open: 'never' }]],
+  // CI runs the suite in shards; each shard writes a blob report and a later job merges them
+  // into one HTML report.
+  reporter: process.env.CI ? [['list'], ['blob']] : [['list'], ['html', { open: 'never' }]],
 
   use: {
     baseURL: env.uiBaseUrl,

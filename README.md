@@ -72,6 +72,21 @@ Defaults live in `src/config/env.ts`. Override them with environment variables o
 - On failure: trace, screenshot and video in `test-results/`. Open a trace with
   `npx playwright show-trace <path-to-trace.zip>`.
 
+## CI
+
+[`.github/workflows/tests.yml`](.github/workflows/tests.yml) runs on GitHub Actions:
+
+- **When:** nightly full regression on all browsers, or manually from the Actions tab with a
+  choice of suite (regression / smoke) and browsers.
+- **Environment:** a local Toolshop in Docker, started by the
+  [`toolshop-environment`](https://github.com/IvanKyuchukov98/toolshop-environment) action, because
+  the public site shows a Cloudflare check to CI browsers.
+- **Sharding:** the selected tests are split across parallel jobs (`--shard=1/2`, `2/2`). Each shard
+  uploads a blob report, and a final job merges them with `playwright merge-reports` into a single
+  HTML report, uploaded as the `playwright-report` artifact.
+- **Summary:** passed / failed / flaky / skipped per project, shown on the run page.
+- **Checks:** type check, ESLint and Prettier run in a separate job.
+
 ## Code quality
 
 ```bash
